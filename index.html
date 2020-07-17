@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+    <style>
+        body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <canvas id="animation"> </canvas>
+
+    <audio preload="true" id="collision">
+        <source src="https://audionautix.com/Music/AllGoodInTheWood.mp3"/>
+    </audio>
+
+    <script>
+
+        window.animationFrameRequest = (function(){
+        return window.requestAnimationFrame || 
+        window.webkitRequestAnimationFrame ||
+        window.mozRequestAnimationFrame ||
+        window.oRequestAnimationFrame ||
+        window.msRequestAnimationFrame ||
+        function( callback ){
+        return window.setTimeout(callback, 1000 / 60);
+        }; })();
+
+        window.animationCancel = ( function(){
+            return window.cancelAnimationFrame ||
+            window.webkitCancelRequestAnimationFrame ||
+            window.mozCancelRequestAnimationFrame ||
+            window.oCancelRequestAnimationFrame ||
+            window.msCancelRequestAnimationFrame ||
+            clearTimeout
+        })();
+
+
+        var canvas = document.getElementById("animation"),
+        canvasContext = canvas.getContext("2d"),
+        X = window.innerWidth,
+        Y = window.innerHeight,
+        gameObjects = [],
+        ball = {},
+        rods = [2],
+        mouse = {},
+        score = 0,
+        speed = 60,
+        colliAni = 20,
+        colliVar = 0,
+        varPos = {},
+        startBut = {},
+        restartBut = {},
+        finish = 0,
+        res,
+        control = 0;
+
+
+
+
+        canvas.width = X;
+        canvas.height = Y;
+
+        canvas.addEventListener("mousemove",moveOfMouse,true);
+        canvas.addEventListener("mousedown",clickOfMouse,true);
+
+        collis = document.getElementById("collision");
+
+
+        ball = {
+            x:50,
+            y:50,
+            r:5,
+            c:"white",
+            xS:4,
+            yS:8,
+
+            draw: function(){
+                canvasContext.beginPath();
+                canvasContext.fillStyle = this.c;
+                canvasContext.arc(this.x,this.y,this.r,0,Math.PI*2,false);
+                canvasContext.fill();
+            }
+        };
+
+        startBut = {
+         w:100,
+         h:50,
+         x:X/2-50,
+         y:Y/2-25,
+
+         startdraw: function(){
+            canvasContext.strokeStyle = "white";
+            canvasContext.lineWidth = "2";
+            canvasContext.strokeRect(this.x,this.y,this.w,this.h);
+            canvasContext.font="20px Arial, sans-serif";
+            canvasContext.textAlign = "center";
+            canvasContext.textBaseline = "middle";
+            canvasContext.fillStyle = "white";
+            canvasContext.fillText("Start",X/2,Y/2);
+         }
+        };
+
+        restartBut = {
+         w:100,
+         h:50,
+         x:X/2-50,
+         y:Y/2-75,
+
+         resdraw: function(){
+            canvasContext.strokeStyle = "white";
+            canvasContext.lineWidth = "2";
+            canvasContext.strokeRect(this.x,this.y,this.w,this.h);
+            canvasContext.font="20px Arial, sans-serif";
+            canvasContext.textAlign = "center";
+            canvasContext.textBaseline = "middle";
+            canvasContext.fillStyle = "white";
+            canvasContext.fillText("Restart",X/2,Y/2-50);
+         }
+        };
+
+        function createStr(x,y){
+            this.x = x ||0;
+            this.y = y||0;
+            this.radius = 2.5;
+            this.xS = -1.2 + Math.random()*3;
+            if(control == 1){
+                this.yS = -1.2 * Math.random()*5;
+            }
+            if(control == 2){
+                this.yS = 1.2 * Math.random()*5;
+                console.log("2");
+            }
+        }
+
+        function increaseSpeed(){
+            if(score % 6 == 0){
+                if(Math.abs(ball.xS) < 20){
+                    ball.xS += (ball.xS < 0) ? -1 : 1;
+                    ball.yS += (ball.yS < 0) ? -2 : 2;
+                }
+            }
+        }
+
+        function createRods(position){
+            this.h=5;
+            this.w=150;
+
+            this.x=X/2 - this.w/2;
+            this.y=(position == "top")?0:Y-this.h;
+        }
+        rods.push(new createRods("down"));
+        rods.push(new createRods("top"));
+
+        function drawCanvas(){
+            canvasContext.fillStyle="black";
+            canvasContext.fillRect(0,0,X,Y);  
+        }
+
+        function draw(){
+            drawCanvas();
+            for(var i = 0; i < rods.length; i++){
+                p = rods[i];
+                canvasContext.fillStyle = "white";
+                canvasContext.fillRect(p.x,p.y,p.w,p.h);
+            }
+            ball.draw();
+            update();
+        }
+
+        function loopForAnimation(){
+            res = animationFrameRequest(loopForAnimation);
+            draw();
+        }
+
+        function startPage(){
+            drawCanvas();
+            startBut.startdraw();
+            if(X!=window.innerWidth||Y!= innerHeight){
+            window.location.reload(false);
+            }
+        }
+
+        function update(){
+
+            if(X!=window.innerWidth||Y!= innerHeight){
+            window.location.reload(false);
+            }
+            updateScore();
+            ball.x += ball.xS;
+            ball.y += ball.yS;
+
+            if(mouse.x || mouse.y){
+                for(var i = 0; i < rods.length; i++){
+                    p = rods[i];
+                        p.x = mouse.x-p.w;
+                }
+            }
+
+            p1 = rods[1];
+            p2 = rods[2];
+
+            if(incerceptionBetweenBallAndRods(ball,p1)){
+                colliDo(ball,p1);
+            }else if(incerceptionBetweenBallAndRods(ball,p2)){
+                colliDo(ball,p2);
+            }else{
+            if(ball.y + ball.r > Y){
+                ball.y = Y - ball.r;
+                gameOver();
+            }else if(ball.y < 0){
+                ball.y = ball.r;
+                gameOver();
+            }
+            if((ball.x + ball.r) >= X){
+                ball.xS = -ball.xS;
+                ball.x = X - ball.r;
+            }else if((ball.x - ball.r) < 0 ){
+                ball.xS = -ball.xS;
+                ball.x = ball.r;
+            }
+        }
+        if(colliVar == 1){
+            for(var i = 0; i < colliAni; i++) {
+                gameObjects.push(new createStr(varPos.x, varPos.y));
+            }
+       }
+       pieRadi();
+
+       colliVar = 0;
+
+        }
+
+        function moveOfMouse(e){
+            mouse.x= e.pageX;
+            mouse.y=e.pageY;
+        }
+
+        function incerceptionBetweenBallAndRods(b,p){
+
+            if((b.x + ball.r) >= p.x && (b.x - ball.r) <= (p.x + p.w)){
+                if(b.y >= (p.y - p.h) && p.y > 0){
+                   colliVar = 1 ;
+                   control=1;
+                   return true;
+                }else if(b.y <= p.h && p.y == 0){
+                    colliVar = 2;
+                    control=2;
+                    return true;
+                }else{
+                    return false;
+                }
+            }
+        }
+
+        function colliDo(ball, p){
+            ball.yS = -ball.yS;
+
+            if(colliVar == 1){
+                ball.y = p.y - p.h;
+                varPos.y = ball.y + ball.r;
+            }else if(colliVar == 2){
+                ball.y = p.h + p.h;
+                varPos.y = ball.y - ball.r;
+            }
+            score++;
+            increaseSpeed();
+
+            if(collis){
+                if(score>0){
+                    collis.pause();
+                }
+                    collis.currentTime = 0;
+                    collis.play();
+                
+            }
+            varPos.x = ball.x;
+            colliVar = 1;
+
+        }
+
+        function pieRadi(){
+            for(var i = 0; i < gameObjects.length; i++){
+                pie = gameObjects[i];
+
+                canvasContext.beginPath();
+                canvasContext.fillStyle = "red";
+                if(pie.radius > 0){
+                    canvasContext.arc(pie.x,pie.y,pie.radius,0,Math.PI,false);
+                }
+                canvasContext.fill();
+                pie.x += pie.xS;
+                pie.y += pie.yS;
+
+                pie.radius = Math.max(pie.radius-0.05,0);
+            }
+        }
+
+
+        function updateScore(){
+            canvasContext.fillStyle = "white";
+            canvasContext.font = "20px Arial, sans-serif";
+            canvasContext.textAlign = "left";
+            canvasContext.textBaseline = "top";
+            canvasContext.fillText("Score: "+score , 20, 20);
+
+        }
+
+        function gameOver(){
+            if(X!=window.innerWidth||Y!= innerHeight){
+            window.location.reload(false);
+            }
+            collis.pause();
+            canvasContext.fillStyle = "white";
+            canvasContext.font = "50px Arial, sans-serif";
+            canvasContext.textAlign = "center";
+            canvasContext.textBaseline = "middle";
+            canvasContext.fillText("Oyun Bitti Gardaş!! - Your Score: " + score, X/2, Y/2+25);
+            cancelAnimationFrame(res);
+
+            finish = 1;
+
+            restartBut.resdraw();
+        }
+
+        function clickOfMouse(e){
+            var mx = e.pageX;
+            var my = e.pageY;
+
+            if(mx >= startBut.x && mx <= startBut.x + startBut.w){
+                if(my >= startBut.y && my <= startBut.y + startBut.h){
+                    loopForAnimation();
+                }
+                    
+            }
+            if(finish == 1){
+                if(mx >= restartBut.x && mx <= restartBut.x + restartBut.w){
+                    if(my >= restartBut.y && my <= restartBut.y + restartBut.h){
+                    ball.x = 20;
+                    ball.y = 0;
+                    score = 0;
+                    ball.xS = 4;
+                    ball.yS = 8;
+                    loopForAnimation();
+
+                    finish = 0;
+            }
+                }
+        }
+        }
+
+        startPage();
+    </script>
+</body>
+</html>
